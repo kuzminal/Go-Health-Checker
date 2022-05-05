@@ -1,6 +1,8 @@
 package main
 
-import "math/rand"
+import (
+	"time"
+)
 
 const (
 	PassStatus = "pass"
@@ -30,21 +32,33 @@ func (g *GoMetrClient) GetID() string {
 }
 
 func (g *GoMetrClient) Health() bool {
-	healthCheck := g.getHealth()
-	if healthCheck.status == PassStatus {
-		return true
-	} else {
+	to := time.After(time.Duration(g.TimeOut) * time.Second)
+	ch := make(chan HealthCheck)
+	var health HealthCheck
+	go func() {
+		ch <- g.getHealth()
+	}()
+	select {
+	case health = <-ch:
+		if health.status == PassStatus {
+			return true
+		} else {
+			return false
+		}
+	case <-to:
+		health.status = FailStatus
 		return false
 	}
 }
 
 func (g *GoMetrClient) getHealth() HealthCheck {
-	n := 1 + rand.Intn(99-1+1)
+	/*n := 1 + rand.Intn(99-1+1)
 	var status string
 	if n%2 == 0 {
 		status = PassStatus
 	} else {
 		status = FailStatus
-	}
-	return HealthCheck{g.URL, status}
+	}*/
+	time.Sleep(3 * time.Second)
+	return HealthCheck{g.URL, PassStatus}
 }

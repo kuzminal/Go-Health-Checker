@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Measurable interface {
@@ -38,4 +41,24 @@ func (c *Checker) Check() {
 			fmt.Println(item.GetID() + " не работает")
 		}
 	}
+}
+
+func (c *Checker) Run(ctx context.Context, wg *sync.WaitGroup, chAdd chan Checkable) {
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			c.Check()
+		case <-ctx.Done():
+			fmt.Println("Проверки остановлены")
+			wg.Done()
+			return
+		case item := <-chAdd:
+			c.Add(item)
+		}
+	}
+}
+
+func (c *Checker) Stop(cancel context.CancelFunc) {
+	cancel()
 }
